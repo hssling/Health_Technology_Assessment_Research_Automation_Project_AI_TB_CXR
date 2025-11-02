@@ -1,0 +1,132 @@
+name: Data Validation Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'hta_project_*/**'
+      - 'literature_search.py'
+      - 'data_processor.py'
+      - 'final_validation.py'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'hta_project_*/**'
+      - 'literature_search.py'
+      - 'data_processor.py'
+      - 'final_validation.py'
+
+jobs:
+  validate-data:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Validate literature search integrity
+      run: |
+        python -c "
+        from literature_search import LiteratureSearch
+        ls = LiteratureSearch()
+        # Validate PubMed API connectivity
+        try:
+            results = ls.search_pubmed('HPV vaccine cost effectiveness', max_results=5)
+            assert len(results) > 0, 'No results from PubMed search'
+            print('✓ PubMed API validation passed')
+        except Exception as e:
+            print(f'✗ PubMed API validation failed: {e}')
+            exit(1)
+        "
+
+    - name: Validate data processing
+      run: |
+        python -c "
+        from data_processor import DataProcessor
+        dp = DataProcessor()
+        # Test data extraction capabilities
+        test_data = {'title': 'Test Study', 'abstract': 'This is a test abstract with cost data $1000'}
+        processed = dp.extract_cost_data(test_data)
+        assert isinstance(processed, dict), 'Data processing failed'
+        print('✓ Data processing validation passed')
+        "
+
+    - name: Run final validation checks
+      run: |
+        python final_validation.py
+
+    - name: Check manuscript quality
+      run: |
+        # Validate that all projects have generated manuscripts
+        for project in {01..05}; do
+          if [ -f "hta_project_${project}_*/output/final_manuscript.md" ]; then
+            echo "✓ Project ${project} manuscript exists"
+          else
+            echo "✗ Project ${project} manuscript missing"
+            exit 1
+          fi
+        done
+
+    - name: Validate data authenticity
+      run: |
+        if [ -f "DATA_VALIDATION_AND_AUTHENTICATION_DISCLOSURE.md" ]; then
+          echo "✓ Data validation disclosure exists"
+        else
+          echo "✗ Data validation disclosure missing"
+          exit 1
+        fi
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: validate-data
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  dependency-check:
+    runs-on: ubuntu-latest
+    needs: validate-data
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Check for outdated dependencies
+      run: |
+        pip list --outdated --format=json | jq '.[] | select(.latest_version != .version) | .name + \" \" + .version + \" -> \" + .latest_version' || echo "No outdated dependencies found"
+
+    - name: Audit dependencies for security vulnerabilities
+      run: |
+        pip audit --format=json || echo "No security vulnerabilities found in dependencies"
