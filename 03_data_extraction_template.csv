@@ -1,0 +1,1 @@
+study_id,year,setting,ai_tool,threshold_score,sensitivity,specificity,human_sensitivity,human_specificity,cxr_cost_inr,ai_cost_per_read_inr,xpert_cost_inr,tb_prevalence,treatment_cost_inr,notes

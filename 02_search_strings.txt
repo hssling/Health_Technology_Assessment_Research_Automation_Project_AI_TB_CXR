@@ -1,0 +1,11 @@
+PubMed / WHO search:
+(("Tuberculosis/diagnosis"[Mesh] OR "pulmonary tuberculosis" OR "TB screening")
+AND ("computer aided diagnosis" OR "CAD" OR "AI" OR "artificial intelligence" OR "deep learning" OR "CAD4TB" OR "qXR" OR "Lunit")
+AND (X-ray OR "chest radiography" OR CXR OR "digital radiography")
+AND (India OR "high TB burden")
+AND (cost OR "cost-effectiveness" OR HTA OR "economic evaluation"))
+
+Also consult:
+- WHO Rapid Communication on automated CXR detection of TB
+- FIND evaluation reports
+- NTEP ACF/mobile van guidelines
